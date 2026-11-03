@@ -209,7 +209,8 @@ def measure(be, groups, lat_n):
         two += timed(lambda: be.run_shared([(g[2], g[3])]), 1, be)
     one, two = sorted(one[5:]), sorted(two[5:])
     chunk = groups[: 16 * 8]
-    be.run_shared([(g[2], g[3]) for g in chunk[:16]])
+    for i in range(0, len(chunk), 16):  # warm every shape used by the timed throughput pass
+        be.run_shared([(g[2], g[3]) for g in chunk[i: i + 16]])
     t = sum(timed(lambda: [be.run_shared([(g[2], g[3]) for g in chunk[i: i + 16]]) for i in range(0, len(chunk), 16)], 1, be))
     return dec, dict(lat1_ms=statistics.median(one) * 1000, lat2_ms=statistics.median(two) * 1000,
                      lat2_p95_ms=two[int(0.95 * len(two))] * 1000, dec_s=len(chunk) / t)
