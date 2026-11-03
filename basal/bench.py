@@ -19,6 +19,7 @@ import gc
 import json
 import random
 import statistics
+import sys
 import time
 from pathlib import Path
 
@@ -92,10 +93,13 @@ def device_name(be=None):
         return torch.cuda.get_device_name(0)
     import platform
     import subprocess
-    try:
-        return subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip()
-    except OSError:
-        return platform.processor() or "cpu"
+    brand = ""
+    if sys.platform == "darwin":  # elsewhere sysctl exists (procps) but has no such key: empty stdout, exit code 1
+        try:
+            brand = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip()
+        except OSError:
+            pass
+    return brand or platform.processor() or "cpu"
 
 
 def reset_memory():
