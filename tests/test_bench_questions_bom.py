@@ -1,4 +1,4 @@
-"""basal-bench --questions: a JSONL file saved with a UTF-8 byte order mark (Windows editors, PowerShell redirection) loads."""
+"""basal-bench --questions loads a JSONL file saved with a UTF-8 byte order mark (Notepad, PowerShell redirection)."""
 import json
 
 from basal import bench

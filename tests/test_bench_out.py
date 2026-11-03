@@ -45,7 +45,7 @@ def test_out_in_missing_directory_is_created_before_the_run(stub_run, tmp_path, 
 
 
 def test_out_is_strict_json_without_nan(stub_run, tmp_path):
-    out = tmp_path / "wyniki" / "bench.json"
+    out = tmp_path / "results" / "strict.json"
     stub_run("--out", str(out))
     text = out.read_text(encoding="utf-8")
 
@@ -59,3 +59,18 @@ def test_stdout_rows_are_strict_json(stub_run, tmp_path, capsys):
     stub_run("--out", str(tmp_path / "b.json"))
     line = next(x for x in capsys.readouterr().out.splitlines() if x.startswith("{"))
     assert "NaN" not in line
+
+
+def test_interrupted_run_keeps_the_finished_modes(stub_run, tmp_path, monkeypatch):
+    out = tmp_path / "bench.json"
+    built = []
+
+    def build(mode, *a, **k):
+        built.append(mode)
+        if len(built) > 1:
+            raise RuntimeError("stop")
+        return _Be()
+    monkeypatch.setattr(bench, "build", build)
+    with pytest.raises(RuntimeError):  # the second mode dies; the first one is already in the file
+        stub_run("fast", "--out", str(out))
+    assert [r["mode"] for r in json.loads(out.read_text(encoding="utf-8"))] == ["gguf"]

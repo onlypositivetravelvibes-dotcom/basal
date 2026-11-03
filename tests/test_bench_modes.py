@@ -1,16 +1,9 @@
 """basal-bench refuses an unknown --modes entry before it loads or measures anything."""
 import sys
-from unittest import mock
 
 import pytest
 
-try:
-    import torch  # noqa: F401
-    from basal import bench
-except ImportError:  # no torch / transformers: stub the heavy imports, the checked logic is pure Python
-    for _name in ("torch", "torch.nn", "torch.nn.functional", "transformers"):
-        sys.modules.setdefault(_name, mock.MagicMock())
-    from basal import bench
+from basal import bench
 
 
 @pytest.mark.parametrize("mode", ["eager-fp32", "fast", "tpu", "tpu-fp32", "gguf", "gguf@m.gguf", "vllm@deterministic",
