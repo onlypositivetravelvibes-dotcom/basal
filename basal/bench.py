@@ -35,6 +35,13 @@ from .server import MODES, adapter_refused, adapter_refused_kind, default_mode
 GGUF_KINDS = ("gguf", "ollama", "llamacpp")  # the engine serves GGUF weights: --model gives tokenizer and calibration
 
 
+def unknown_mode(m):
+    """None when `m` is a mode build() accepts, else the SystemExit message (checked before anything is loaded)."""
+    if m in MODES or m in ("eager-fp32", "tpu-fp32") or ("@" in m and m.split("@")[0] in ("gguf", "vllm", "fast-exit")):
+        return None
+    return f"unknown mode {m!r}; modes: {', '.join(sorted(set(MODES) | {'eager-fp32', 'tpu-fp32'}))}, gguf@<file>, vllm@<preset>, fast-exit@<policy>"
+
+
 def build(mode, md, vllm_model=None, gguf=None, ollama_model=None, ollama_url="http://127.0.0.1:11434",
           llamacpp_url="http://127.0.0.1:8080", fmt=1, mlx_packed=False, mlx_forward="mlx-lm", adapter=None):
     """adapter: a LoRA adapter (basal.adapter.read) merged at load / served natively (main refuses it for the
@@ -265,6 +272,9 @@ def main():
                     help="mlx modes: mlx-lm's forward (default) or basal's own (basal-serve --mlx-forward basal)")
     a = ap.parse_args()
     a.modes = a.modes or default_modes(a.model)
+    for m in a.modes:  # before anything is loaded or measured
+        if unknown_mode(m):
+            raise SystemExit(unknown_mode(m))
     adapter = adapter_module.read(a.adapter) if a.adapter else None
     for m in a.modes if adapter else ():  # before anything is loaded
         why = adapter_refused_kind(*MODES.get(m.split("@")[0], ("", None))[:2])
