@@ -17,6 +17,7 @@ Measured per mode (same definitions as in the technical report):
 import argparse
 import gc
 import json
+import math
 import random
 import statistics
 import sys
@@ -222,6 +223,12 @@ def measure(be, groups, lat_n):
 
 
 
+def json_safe(r):
+    """A row for JSON: NaN (no memory tracking, memory_gb) becomes null; json.dumps would write the literal NaN, which
+    strict parsers (JavaScript JSON.parse) refuse."""
+    return {k: None if isinstance(v, float) and math.isnan(v) else v for k, v in r.items()}
+
+
 def main():
     import sys
     if "--identity" in sys.argv[1:]:  # the identity gate of the fast path (basal/identity.py)
@@ -266,6 +273,8 @@ def main():
     md = resolve(a.model, metadata_only=all(MODES.get(m.split("@")[0], ("",))[0] in GGUF_KINDS for m in a.modes))
     vm = resolve(a.vllm_model) if a.vllm_model else None
     qs = load_questions(a.questions, a.n)
+    if a.out:  # before the run: a bad path must not cost the minutes of measuring
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     fmt = model_format(md)
     ref, rows = None, []
     for mode in a.modes:
@@ -288,7 +297,9 @@ def main():
         else:
             r["agree"] = sum(x == y for x, y in zip(top, ref)) / len(ref)
         rows.append(r)
-        print(json.dumps({k: round(v, 3) if isinstance(v, float) else v for k, v in r.items()}), flush=True)
+        print(json.dumps({k: round(v, 3) if isinstance(v, float) else v for k, v in json_safe(r).items()}), flush=True)
+        if a.out:  # after every mode: an interrupted run keeps the finished ones
+            Path(a.out).write_text(json.dumps([json_safe(x) for x in rows], indent=1), encoding="utf-8")
         if hasattr(be, "llm"):
             del be.llm
         del be; gc.collect(); reset_memory()
@@ -296,8 +307,6 @@ def main():
     for r in rows:
         print(f"{r['mode']:<18}{r['lat2_ms']:>9.1f}{r['lat1_ms']:>9.1f}{r['dec_s']:>8.1f}"
               f"{r.get('agree', float('nan')):>8.3f}{r.get('acc', float('nan')):>7.3f}{r['mem_gb']:>6.1f}")
-    if a.out:
-        Path(a.out).write_text(json.dumps(rows, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":
