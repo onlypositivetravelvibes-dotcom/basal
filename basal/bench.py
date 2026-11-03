@@ -152,7 +152,7 @@ def load_questions(paths, n, seed=0):
     with "questions" are skipped)."""
     if isinstance(paths, (str, Path)):
         paths = [paths]
-    qs = [json.loads(line) for p in paths for line in Path(p).read_text(encoding="utf-8").splitlines() if line.strip()]
+    qs = [json.loads(line) for p in paths for line in Path(p).read_text(encoding="utf-8-sig").splitlines() if line.strip()]
     qs = [q for q in qs if "options" in q]
     random.Random(seed).shuffle(qs)
     return qs[:n]
