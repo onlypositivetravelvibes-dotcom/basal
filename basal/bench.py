@@ -28,7 +28,7 @@ from . import adapter as adapter_module
 from .engine import (EagerBackend, ExitGraphBackend, GGUFBackend, GraphBackend, LlamaCppBackend, MLXBackend,
                      MPSBackend, OllamaBackend, SGLangBackend, VLLMBackend, resolve)
 from .prompt import letter_ids, max_options, model_format, render, model_layout
-from .server import MODES, adapter_refused, adapter_refused_kind, default_mode
+from .server import MODES, adapter_refused, adapter_refused_kind, default_mode, nvfp4_args
 
 GGUF_KINDS = ("gguf", "ollama", "llamacpp")  # the engine serves GGUF weights: --model gives tokenizer and calibration
 
@@ -72,7 +72,8 @@ def build(mode, md, vllm_model=None, gguf=None, ollama_model=None, ollama_url="h
         return StrixHaloFastBackend(md, "bfloat16", **ad)
     if kind == "exit":
         return ExitGraphBackend(md, "bfloat16", quant, compile=comp)
-    return GraphBackend(md, "bfloat16", quant, compile=comp, shared=True, **ad)
+    return GraphBackend(md, "bfloat16", quant, compile=comp, shared=True,
+                        **nvfp4_args(argparse.Namespace(), md, quant), **ad)
 
 
 def default_modes(model=None):
