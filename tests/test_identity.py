@@ -59,7 +59,7 @@ def test_bench_module_entry_exit_status(monkeypatch, gates, status):
     import sys
     monkeypatch.setattr(identity, "main", lambda argv: [{"gate": g} for g in gates])
     monkeypatch.setattr(sys, "argv", ["bench", "--identity", "--model", "m"])
-    sys.modules.pop("basal.bench", None)  # run_module executes a fresh copy as __main__
+    monkeypatch.delitem(sys.modules, "basal.bench", raising=False)  # a fresh copy runs as __main__; restored after
     with pytest.raises(SystemExit) as e:
         runpy.run_module("basal.bench", run_name="__main__")
     assert e.value.code == status

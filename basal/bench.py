@@ -39,7 +39,8 @@ def unknown_mode(m):
     """None when `m` is a mode build() accepts, else the SystemExit message (checked before anything is loaded)."""
     if m in MODES or m in ("eager-fp32", "tpu-fp32") or ("@" in m and m.split("@")[0] in ("gguf", "vllm", "fast-exit")):
         return None
-    return f"unknown mode {m!r}; modes: {', '.join(sorted(set(MODES) | {'eager-fp32', 'tpu-fp32'}))}, gguf@<file>, vllm@<preset>, fast-exit@<policy>"
+    known = ", ".join(sorted(set(MODES) | {"eager-fp32", "tpu-fp32"}))
+    return f"unknown mode {m!r}; modes: {known}, gguf@<file>, vllm@<preset>, fast-exit@<policy>"
 
 
 def build(mode, md, vllm_model=None, gguf=None, ollama_model=None, ollama_url="http://127.0.0.1:11434",
@@ -320,5 +321,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
     sys.exit(main())  # python -m basal.bench carries the same exit status as the basal-bench entry point
