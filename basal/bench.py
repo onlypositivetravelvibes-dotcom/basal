@@ -203,11 +203,13 @@ def measure(be, groups, lat_n):
         res += be.run_shared([(g[2], g[3]) for g in groups[i: i + 32]])
     dec = decisions(groups, res)
     one, two = [], []
+    lat_n = max(1, lat_n)  # main() passes min(--lat-n, len(groups) - 5): <= 0 for a small sample or --lat-n 0
     for g in groups[: lat_n + 5]:
         be.run([g[2][0]], [g[3][0]]); be.run_shared([(g[2], g[3])])  # warm-up of the shapes
         one += timed(lambda: be.run([g[2][0]], [g[3][0]]), 1, be)
         two += timed(lambda: be.run_shared([(g[2], g[3])]), 1, be)
-    one, two = sorted(one[5:]), sorted(two[5:])
+    skip = min(5, len(one) - 1)  # the first 5 timings are warm-up, but always keep one
+    one, two = sorted(one[skip:]), sorted(two[skip:])
     chunk = groups[: 16 * 8]
     be.run_shared([(g[2], g[3]) for g in chunk[:16]])
     t = sum(timed(lambda: [be.run_shared([(g[2], g[3]) for g in chunk[i: i + 16]]) for i in range(0, len(chunk), 16)], 1, be))
