@@ -49,7 +49,8 @@ answered as `choice`. [WHATS_NEW](docs/WHATS_NEW.md#what-is-new-in-basal-252).
   up, `--api-keys`, `--cors-origins`; `basal-prepare` and `--prepared auto` (basal-omni-1.0-mini 290 -> 172 s on an
   H100 with empty caches, the same answers); torch.compile's cache survives a reboot.
 - **Answers you can rely on**: answer sets (`"coverage"`), an abstain flag with `max_error`, a second read (`--reread`),
-  and an option-order check and average (`basal-bench --order-check`, `--order-average`).
+  and an option-order check (`basal-bench --order-check`, `--average K`) and an average served with
+  `basal-serve --order-average K`.
 - **More GPUs and engines**: basal-omni-1.0-ultra in `--mode fp8`, `nvfp4` and `int8` and on a 48 GB card
   (`--quant-load cpu`); basal-omni-pico in the fast engine and on `--mode mlx`; basal-omni-1.1-max images and audio
   through `--mode vllm`; LM Studio as a host for basal decision models (`basal-export-gguf --systemone`).
