@@ -50,3 +50,16 @@ def test_bench_identity_exit_status(monkeypatch, gates, status):
     monkeypatch.setattr(identity, "main", lambda argv: seen.append(argv) or [{"gate": g} for g in gates])
     monkeypatch.setattr(sys, "argv", ["basal-bench", "--identity", "--model", "m"])
     assert bench.main() == status and seen == [["--model", "m"]]
+
+
+@pytest.mark.parametrize("gates, status", [(["pass", "pass"], 0), (["pass", "FAIL"], 1)])
+def test_bench_module_entry_exit_status(monkeypatch, gates, status):
+    """`python -m basal.bench --identity` carries the same exit status as the basal-bench entry point."""
+    import runpy
+    import sys
+    monkeypatch.setattr(identity, "main", lambda argv: [{"gate": g} for g in gates])
+    monkeypatch.setattr(sys, "argv", ["bench", "--identity", "--model", "m"])
+    sys.modules.pop("basal.bench", None)  # run_module executes a fresh copy as __main__
+    with pytest.raises(SystemExit) as e:
+        runpy.run_module("basal.bench", run_name="__main__")
+    assert e.value.code == status
