@@ -310,4 +310,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())  # python -m basal.bench carries the same exit status as the basal-bench entry point
