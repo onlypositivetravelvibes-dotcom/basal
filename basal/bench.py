@@ -27,7 +27,7 @@ import torch
 from . import adapter as adapter_module
 from .engine import (EagerBackend, ExitGraphBackend, GGUFBackend, GraphBackend, LlamaCppBackend, MLXBackend,
                      MPSBackend, OllamaBackend, SGLangBackend, VLLMBackend, resolve)
-from .prompt import letter_ids, max_options, model_format, render, model_layout
+from .prompt import letter_ids, max_options, model_format, render, model_layout, model_option_isolation, option_tokens
 from .server import MODES, adapter_refused, adapter_refused_kind, default_mode, nvfp4_args
 
 GGUF_KINDS = ("gguf", "ollama", "llamacpp")  # the engine serves GGUF weights: --model gives tokenizer and calibration
@@ -155,7 +155,7 @@ def load_questions(paths, n, seed=0):
     return qs[:n]
 
 
-def groups_for(tok, qs, fmt=1, layout="canonical"):
+def groups_for(tok, qs, fmt=1, layout="canonical", iso=False):
     out = []
     for q in qs:
         k = len(q["options"])
@@ -164,6 +164,9 @@ def groups_for(tok, qs, fmt=1, layout="canonical"):
                           layout=layout) for p in perms]
         ids = letter_ids(tok, prompts[0], k, fmt)
         if ids:
+            if iso:  # a model trained with isolated options reads the prompt piece by piece, as basal-serve feeds it
+                prompts = [option_tokens(tok, prompt, [q["options"][c] for c in p], fmt)
+                           for prompt, p in zip(prompts, perms)]
             out.append((q, perms, prompts, [ids, ids]))
     return out
 
@@ -265,6 +268,7 @@ def main():
     qs = load_questions(a.questions, a.n)
     fmt = model_format(md)
     layout = model_layout(md)
+    iso = model_option_isolation(md)
     ref, rows = None, []
     for mode in a.modes:
         reset_memory()
@@ -272,7 +276,7 @@ def main():
         be = build(mode, md, vm, a.gguf, a.ollama_model, a.ollama_url, a.llamacpp_url, fmt, a.mlx_packed,
                    a.mlx_forward, adapter)
         load_s = time.time() - t0
-        groups = groups_for(be.tok, qs, fmt, layout=layout)
+        groups = groups_for(be.tok, qs, fmt, layout=layout, iso=iso)
         dec, r = measure(be, groups, min(a.lat_n, len(groups) - 5))
         top = [max(range(len(d)), key=d.__getitem__) for d in dec]
         r = dict(mode=mode, reference_mode=a.modes[0], gpu=device_name(be), n=len(groups), load_s=round(load_s, 1),

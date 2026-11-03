@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 
 from .engine import resolve
-from .prompt import letter_ids, model_format, render, model_layout
+from .prompt import letter_ids, model_format, render, model_layout, model_option_isolation, option_tokens
 
 
 def top(p):
@@ -48,7 +48,7 @@ def mean(rows):
     return [sum(x) / len(rows) for x in zip(*rows)]
 
 
-def groups_for(tok, qs, m, fmt=1, layout="canonical"):
+def groups_for(tok, qs, m, fmt=1, layout="canonical", iso=False):
     """Each question in its first m option orders -> [(question, perms, prompts, code ids per prompt)]."""
     from .server import option_orders
     out = []
@@ -59,6 +59,9 @@ def groups_for(tok, qs, m, fmt=1, layout="canonical"):
                           layout=layout) for p in perms]
         ids = letter_ids(tok, prompts[0], k, fmt)
         if ids and k >= 2:
+            if iso:
+                prompts = [option_tokens(tok, prompt, [q["options"][c] for c in p], fmt)
+                           for prompt, p in zip(prompts, perms)]
             out.append((q, perms, prompts, [ids] * len(perms)))
     return out
 
@@ -115,9 +118,9 @@ def latencies(be, groups, averages, lat_n):
     return out
 
 
-def run(be, qs, fmt, averages, lat_n, layout="canonical"):
+def run(be, qs, fmt, averages, lat_n, layout="canonical", iso=False):
     m = max([3] + list(averages))
-    groups = groups_for(be.tok, qs, m, fmt, layout=layout)
+    groups = groups_for(be.tok, qs, m, fmt, layout=layout, iso=iso)
     probs = []
     for i in range(0, len(groups), 16):
         probs += be.run_shared([(g[2], g[3]) for g in groups[i: i + 16]])
@@ -149,11 +152,12 @@ def main(argv=None):
     md = resolve(a.model)
     fmt = model_format(md)
     layout = model_layout(md)
+    iso = model_option_isolation(md)
     qs = load_questions(a.questions, a.n)
     t0 = time.time()
     be = build(mode, md, fmt=fmt)
     r = dict(mode=mode, model=a.model, gpu=device_name(be), load_s=round(time.time() - t0, 1),
-             **run(be, qs, fmt, sorted(set(a.average)), a.lat_n, layout=layout))
+             **run(be, qs, fmt, sorted(set(a.average)), a.lat_n, layout=layout, iso=iso))
     print(json.dumps({k: round(v, 4) if isinstance(v, float) else v for k, v in r.items() if k != "by_k"}), flush=True)
     for label, b in r["by_k"].items():
         print(f"  {label} options: n {b['n']}, flip reversed {b['flip_reversed']:.3f}, rotated "
